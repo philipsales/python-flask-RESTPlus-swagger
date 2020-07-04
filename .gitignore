@@ -1,4 +1,6 @@
 .DS_Store
+Pipefile.lock
+*.*.bak
 secrets/
 
 ../python_env-3.6.2

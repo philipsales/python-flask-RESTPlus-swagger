@@ -55,11 +55,8 @@ presidents = [
     "George W. Bush", "Barack Obama",
     ]
 
+"""
 def search(query):
-    """
-    Do a simple fuzzy match of US presidents, returning results in
-    Refine reconciliation API format.
-    """
     pattern = re.compile(query, re.IGNORECASE)
     matches = []
 
@@ -82,11 +79,11 @@ def search(query):
                      "name": "US President"}]})
 
     return matches
+"""
 
 def search_es(query):
     """
-    Do a simple fuzzy match of US presidents, returning results in
-    Refine reconciliation API format.
+    Do a simple fuzzy match of values, returning results in Refine reconciliation API format.
     """
 
     query_body = {
@@ -101,7 +98,6 @@ def search_es(query):
     }
 
     result = es.search(index="2020-icd10-cm", body=query_body)
-    #print("query hits:", result["hits"]["hits"])
     result_len = result["hits"]["total"]["value"]
 
     matches = []
@@ -120,41 +116,16 @@ def search_es(query):
 
         matches.append({
             "id": item['_id'],
-            #"id": id,
             "name": item['_source']['diagnosis'],
-            #"name": name,
             "score": item['_score'],
-            #"score": 100,
             "match": match,
             "type": [
-                {"id": "/people/presidents",
-                    "name": "US President"}]})
+                { 
+                    "id": "/reconcile/diagnosis",
+                    "name": "ICD 10"
+                }]
+            })
     
-    print('----query----')
-    print(query)
-    print('----matches----')
-    print(matches)
-
-    """
-    pattern = re.compile(query, re.IGNORECASE)
-
-    for (id, name) in zip(range(0, len(presidents)), presidents):
-        if pattern.search(name):
-            if name == query:
-                match = True
-            else:
-                match = False
-
-            matches.append({
-                "id": id,
-                "name": name,
-                "score": 100,
-                "match": match,
-                "type": [
-                    {"id": "/people/presidents",
-                        "name": "US President"}]})
-    """
-
     return matches
 
 
@@ -191,9 +162,7 @@ class Diagnosis(Resource):
             queries = json.loads(queries)
             results = {}
             for (key, query) in queries.items():
-                #results[key] = {"result": search(query['query'])}
                 results[key] = {"result": search_es(query['query'])}
-                print('-----results[key]-----')
                 print(results[key])
             return jsonpify(results)
 

@@ -1,7 +1,19 @@
 from flask import Flask, make_response, abort, request, jsonify, json
 from flask_restplus import Api, Resource, fields, reqparse
 import re
-from marshmallow import Schema, fields, pprint
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConnectionError 
+from elasticsearch import helpers
+
+from settings.base_conf import elastic_config
+conn = elastic_config.ElasticSearchConfig[elastic_config.ElasticSearchENV]
+
+INDEX = conn['INDEX']
+DOC_TYPE = conn['TYPE']
+HOST1 = conn['HOST']
+HOST2 = conn['HOST']
+nodes = [HOST1, HOST2]
+
 
 app = Flask(__name__)
 api = Api(app, 
@@ -10,27 +22,12 @@ api = Api(app,
     description='OpenRefine Reconciliation API',
 )
 
-class QuerySchema(Schema):
-    query = fields.Str()
-
-class QueryItemSchema(Schema):
-    q0 = fields.Nested(QuerySchema())
-
-query = dict(query='Barrack')
-q0 = dict(q0=query)
-
-schema = QueryItemSchema()
-result = schema.dump(q0)
-pprint(type(result))
-pprint(result, indent=2)
-
 metadatas = {
     "name" : "2020 ICD-10-CM",
     "identifierSpace" : "http://www.wikidata.org/entity/",
     "schemaSpace" : "http://www.wikidata.org/prop/direct/",
     "defaultTypes": [
-        { "id": "/2020icd10cm/diagnosis_name", "name": "Diagnosis Name" },
-        { "id": "/2020icd10cm/diagnosis_code", "name": "Diagnosis Code" }
+        { "id": "/2020icd10cm/president", "name": "President's name" }
         ]
     }
 
@@ -52,10 +49,6 @@ presidents = [
     ]
 
 def search(query):
-    """
-    Do a simple fuzzy match of US presidents, returning results in
-    Refine reconciliation API format.
-    """
     pattern = re.compile(query, re.IGNORECASE)
     matches = []
 
@@ -92,27 +85,27 @@ def jsonpify(obj):
     except KeyError:
         return jsonify(obj)
 
-#@api.route('/reconcile/diagnosis/<queries>', methods=['POST', 'GET'])
-@api.route('/reconcile/diagnosis/<queries>')
+@api.route('/people/presidents/<queries>')
 @api.doc(params={ 'queries': { 'description': 'queries' , 'type': 'object' } })
 class Diagnosis(Resource):
 
     def get(self,queries):
-        pprint('GET----')
+        print('GET----')
         # empty queries for initialization only
         if not bool(json.loads(queries)):
             return jsonpify(metadatas)
 
     def post(self,queries):
         queries = request.form.get('queries')
-        pprint('POST----')
-        pprint(queries)
+        print('POST----')
+        print(queries)
 
         if queries:
             queries = json.loads(queries)
             results = {}
             for (key, query) in queries.items():
                 results[key] = {"result": search(query['query'])}
+                print(results[key])
             return jsonpify(results)
 
 if __name__ == '__main__':
